@@ -12,20 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-data "google_client_config" "provider" {}
-
-data "google_container_cluster" "ml_cluster" {
-  name       = var.cluster_name
-  location   = var.region
+terraform {
+  required_providers {
+    google = {
+      source = "hashicorp/google"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 4.8"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.8.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "2.18.1"
+    }
+    kubectl = {
+      source  = "alekc/kubectl"
+      version = "2.0.1"
+    }
+  }
+  provider_meta "google" {
+    module_name = "blueprints/terraform/terraform-google-kubernetes-engine:kuberay/v0.1.0"
+  }
 }
-
-module "gke" {
-  source = "./modules/gke"
-
-  project_id       = var.project_id
-  region           = var.region
-  cluster_name     = var.cluster_name
-  enable_autopilot = var.enable_autopilot
-  enable_tpu       = var.enable_tpu
-}
-

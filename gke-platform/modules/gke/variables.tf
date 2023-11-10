@@ -14,18 +14,8 @@
 
 variable "project_id" {
   type        = string
-  description = "GCP project id."
-}
-
-variable "namespace" {
-  type        = string
-  description = "Kubernetes namespace where resources are deployed."
-}
-
-variable "service_account" {
-  type        = string
-  description = "Google Cloud IAM service account for authenticating with GCP services."
-  default     = "ray-on-gke-system-account"
+  description = "GCP project id"
+  default     = "<your project>"
 }
 
 variable "region" {
@@ -34,7 +24,7 @@ variable "region" {
   default     = "us-central1"
 }
 
-variable "gke_cluster_name" {
+variable "cluster_name" {
   type        = string
   description = "GKE cluster name"
   default     = "ml-cluster"
@@ -50,10 +40,4 @@ variable "enable_tpu" {
   type        = bool
   description = "Set to true to create TPU node pool"
   default     = false
-}
-
-variable "provision-a-gke-cluster" {
-  type = bool
-  description = "Provision a GKE cluster or use an existing one."
-  default = true
 }

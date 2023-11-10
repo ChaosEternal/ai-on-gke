@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-data "google_client_config" "provider" {}
+module "gke_autopilot" {
+  source = "../gke_autopilot"
 
-data "google_container_cluster" "ml_cluster" {
-  name       = var.cluster_name
-  location   = var.region
+  project_id       = var.project_id
+  region           = var.region
+  cluster_name     = var.cluster_name
+  enable_autopilot = var.enable_autopilot
 }
 
-module "gke" {
-  source = "./modules/gke"
+
+module "gke_standard" {
+  source = "../gke_standard"
 
   project_id       = var.project_id
   region           = var.region
@@ -29,3 +32,21 @@ module "gke" {
   enable_tpu       = var.enable_tpu
 }
 
+module "kubernetes" {
+  source = "../kubernetes"
+
+  depends_on       = [module.gke_standard]
+  region           = var.region
+  cluster_name     = var.cluster_name
+  enable_autopilot = var.enable_autopilot
+  enable_tpu       = var.enable_tpu
+}
+
+module "kuberay" {
+  source = "../kuberay"
+
+  depends_on       = [module.gke_autopilot, module.gke_standard]
+  region           = var.region
+  cluster_name     = var.cluster_name
+  enable_autopilot = var.enable_autopilot
+}

@@ -14,18 +14,57 @@
 
 data "google_client_config" "provider" {}
 
+data "google_container_cluster" "ml_cluster" {
+  name       = var.gke_cluster_name
+  location   = var.region
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
+}
+
 provider "kubernetes" {
-  config_path = pathexpand("~/.kube/config")
+  host  = data.google_container_cluster.ml_cluster.endpoint
+  token = data.google_client_config.provider.access_token
+  cluster_ca_certificate = base64decode(
+    data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
+  )
 }
 
 provider "kubectl" {
-  config_path = pathexpand("~/.kube/config")
+  host  = data.google_container_cluster.ml_cluster.endpoint
+  token = data.google_client_config.provider.access_token
+  cluster_ca_certificate = base64decode(
+    data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
+  )
 }
 
 provider "helm" {
   kubernetes {
-    config_path = pathexpand("~/.kube/config")
+    ##config_path = pathexpand("~/.kube/config")
+    host  = data.google_container_cluster.ml_cluster.endpoint
+    token = data.google_client_config.provider.access_token
+    cluster_ca_certificate = base64decode(
+      data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
+    )
   }
+}
+
+
+module "gke_cluster" {
+  source           = "../../gke-platform/modules/gke"
+  project_id       = var.project_id
+  count            = var.provision-a-gke-cluster ? 1 : 0
+  region           = var.region
+  cluster_name     = var.gke_cluster_name
+  enable_autopilot = var.enable_autopilot
+  enable_tpu       = var.enable_tpu
 }
 
 module "kubernetes" {
