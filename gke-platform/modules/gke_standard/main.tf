@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-provider "google" {
-  project = var.project_id
-  region  = var.region
-}
-
-provider "google-beta" {
-  project = var.project_id
-  region  = var.region
-}
-
 # GKE cluster
 resource "google_container_cluster" "ml_cluster" {
   name                     = var.cluster_name
@@ -70,7 +60,7 @@ resource "google_container_node_pool" "cpu_pool" {
   }
 
   node_config {
-    machine_type = "n1-standard-16"
+    machine_type = var.cpu_node_machine
   }
 }
 
@@ -78,6 +68,7 @@ resource "google_container_node_pool" "gpu_pool" {
   name       = "gpu-pool"
   location   = var.region
   node_count = var.num_nodes
+  node_locations = var.gpu_locations
   count      = var.enable_autopilot || var.enable_tpu ? 0 : 1
   cluster    = var.enable_autopilot || var.enable_tpu ? null : google_container_cluster.ml_cluster[0].name
 
@@ -109,17 +100,17 @@ resource "google_container_node_pool" "gpu_pool" {
     }
 
     guest_accelerator {
-      type  = var.gpu_pool_accelerator_type
-      count = 2
+      type  = var.gpu_type
+      count = var.gpu_count
     }
 
     # preemptible  = true
     image_type   = "cos_containerd"
-    machine_type = var.gpu_pool_machine_type
+    machine_type = var.gpu_node_machine
     tags         = ["gke-node", "${var.project_id}-gke"]
 
     disk_size_gb = "200"
-    disk_type    = "pd-balanced"
+    disk_type    = local.machine_configs[var.gpu_machine_cfg].disk
 
     metadata = {
       disable-legacy-endpoints = "true"

@@ -18,11 +18,12 @@ data "local_file" "fluentd_config_yaml" {
 
 resource "kubernetes_namespace" "ml" {
   metadata {
-    name = var.namespace
+    name = var.fluentd_namespace
   }
 }
 
 resource "kubectl_manifest" "fluentd_config" {
-  override_namespace = var.namespace
+  override_namespace = var.fluentd_namespace
   yaml_body          = data.local_file.fluentd_config_yaml.content
+  depends_on         = [resource.kubernetes_namespace.ml]
 }

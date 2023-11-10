@@ -17,59 +17,11 @@ data "google_client_config" "provider" {}
 data "google_container_cluster" "ml_cluster" {
   name       = var.cluster_name
   location   = var.region
-  depends_on = [module.gke_autopilot, module.gke_standard]
+  depends_on = [module.gke]
 }
 
-provider "google" {
-  project = var.project_id
-  region  = var.region
-}
-
-provider "google-beta" {
-  project = var.project_id
-  region  = var.region
-}
-
-provider "kubernetes" {
-  host  = data.google_container_cluster.ml_cluster.endpoint
-  token = data.google_client_config.provider.access_token
-  cluster_ca_certificate = base64decode(
-    data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
-  )
-}
-
-provider "kubectl" {
-  host  = data.google_container_cluster.ml_cluster.endpoint
-  token = data.google_client_config.provider.access_token
-  cluster_ca_certificate = base64decode(
-    data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
-  )
-}
-
-provider "helm" {
-  kubernetes {
-    ##config_path = pathexpand("~/.kube/config")
-    host  = data.google_container_cluster.ml_cluster.endpoint
-    token = data.google_client_config.provider.access_token
-    cluster_ca_certificate = base64decode(
-      data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
-    )
-  }
-}
-
-module "gke_autopilot" {
-  source = "./modules/gke_autopilot"
-
-  project_id       = var.project_id
-  region           = var.region
-  cluster_name     = var.cluster_name
-  cluster_labels   = var.cluster_labels
-  enable_autopilot = var.enable_autopilot
-}
-
-
-module "gke_standard" {
-  source = "./modules/gke_standard"
+module "gke" {
+  source = "./modules/gke"
 
   project_id                = var.project_id
   region                    = var.region
@@ -85,7 +37,7 @@ module "gke_standard" {
 module "kubernetes" {
   source = "./modules/kubernetes"
 
-  depends_on       = [module.gke_standard]
+  depends_on       = [module.gke]
   region           = var.region
   cluster_name     = var.cluster_name
   enable_autopilot = var.enable_autopilot
@@ -95,7 +47,7 @@ module "kubernetes" {
 module "kuberay" {
   source = "./modules/kuberay"
 
-  depends_on       = [module.gke_autopilot, module.gke_standard]
+  depends_on       = [module.gke]
   region           = var.region
   cluster_name     = var.cluster_name
   enable_autopilot = var.enable_autopilot

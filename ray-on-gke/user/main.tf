@@ -14,30 +14,95 @@
 
 data "google_client_config" "provider" {}
 
+data "google_container_cluster" "ml_cluster" {
+  name       = var.gke_cluster_name
+  location   = var.region
+  depends_on = [module.gke_cluster]
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
+}
+
 provider "kubernetes" {
-  config_path = pathexpand("~/.kube/config")
+  host  = "https://${data.google_container_cluster.ml_cluster.endpoint}"
+  token = data.google_client_config.provider.access_token
+  cluster_ca_certificate = base64decode(
+    data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
+  )
 }
 
 provider "kubectl" {
-  config_path = pathexpand("~/.kube/config")
+  host  = "https://${data.google_container_cluster.ml_cluster.endpoint}"
+  token = data.google_client_config.provider.access_token
+  cluster_ca_certificate = base64decode(
+    data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
+  )
 }
 
 provider "helm" {
   kubernetes {
-    config_path = pathexpand("~/.kube/config")
+    ##config_path = pathexpand("~/.kube/config")
+    host  = data.google_container_cluster.ml_cluster.endpoint
+    token = data.google_client_config.provider.access_token
+    cluster_ca_certificate = base64decode(
+      data.google_container_cluster.ml_cluster.master_auth[0].cluster_ca_certificate
+    )
   }
 }
 
-module "kubernetes" {
-  source = "./modules/kubernetes"
 
-  namespace = var.namespace
+module "gke_cluster" {
+  source           = "../../gke-platform/modules/gke"
+  project_id       = var.project_id
+  count            = var.provision-a-gke-cluster ? 1 : 0
+  region           = var.region
+  cluster_name     = var.gke_cluster_name
+  enable_autopilot = var.enable_autopilot
+  enable_tpu       = var.enable_tpu
+
+  gpu_locations    = var.gpu_locations
+  
+  gpu_type         = lookup(local.machine_configs, var.gpu_machine_cfg).gpu
+  gpu_count        = lookup(local.machine_configs, var.gpu_machine_cfg).count
+  gpu_node_machine = lookup(local.machine_configs, var.gpu_machine_cfg).machine
+  gpu_node_disk    = lookup(local.machine_configs, var.gpu_machine_cfg).disk
+}
+
+module "gpu_driver" {
+  source = "../../gke-platform/modules/kubernetes"
+
+  depends_on       = [module.gke_cluster]
+  region           = var.region
+  cluster_name     = var.gke_cluster_name
+  enable_autopilot = var.enable_autopilot
+  enable_tpu       = var.enable_tpu
+}
+
+module "kuberay-operator" {
+  source = "../../gke-platform/modules/kuberay"
+
+  depends_on       = [module.gke_cluster]
+  region           = var.region
+  cluster_name     = var.gke_cluster_name
+  enable_autopilot = var.enable_autopilot
+}
+
+
+module "fluentd" {
+  source = "./modules/kubernetes"
 }
 
 module "service_accounts" {
   source = "./modules/service_accounts"
 
-  depends_on      = [module.kubernetes]
+  depends_on      = [module.fluentd]
   project_id      = var.project_id
   namespace       = var.namespace
   service_account = var.service_account
@@ -46,7 +111,7 @@ module "service_accounts" {
 module "kuberay" {
   source = "./modules/kuberay"
 
-  depends_on       = [module.kubernetes]
+  depends_on       = [module.fluentd, module.kuberay-operator]
   namespace        = var.namespace
   enable_tpu       = var.enable_tpu
   enable_autopilot = var.enable_autopilot

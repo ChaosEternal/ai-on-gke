@@ -15,7 +15,7 @@
 variable "project_id" {
   type        = string
   description = "GCP project id"
-  default     = "ricliu-gke-dev"
+  default     = "<your project>"
 }
 
 variable "region" {
@@ -30,25 +30,6 @@ variable "cluster_name" {
   default     = "ml-cluster"
 }
 
-variable "cluster_labels" {
-  type        = map
-  description = "GKE cluster labels"
-  default     =  {
-    created-by = "ai-on-gke"
-  }
-}
-
-variable "namespace" {
-  type        = string
-  description = "Kubernetes namespace where resources are deployed"
-  default     = "ray"
-}
-
-variable "num_nodes" {
-  description = "Number of GPU / TPU nodes in the cluster"
-  default     = 1
-}
-
 variable "enable_autopilot" {
   type        = bool
   description = "Set to true to enable GKE Autopilot clusters"
@@ -61,26 +42,10 @@ variable "enable_tpu" {
   default     = false
 }
 
-variable "gpu_pool_node_locations" {
-  type        = list
-  description = "Specify the gpu-pool node zone locations"
-  default     = ["us-central1-a", "us-central1-c", "us-central1-f"]
-}
-
-variable "custom_gpu_selection" {
-  type = object({
-      machine = string
-      gpu = string
-      count = number
-      disk = string
-  })
-  description = "Use a custom gpu/cpu combination."
-  default = {
-      machine = "g2-standard-16"
-      gpu = "nvidia-l4"
-      count = 1
-      disk = "pd-balanced"
-  }
+variable "cpu_node_machine" {
+  type = string
+  description = "The machine used for cpu nodes"
+  default = "n1-standard-16"
 }
 
 variable "gpu_type" {
@@ -92,7 +57,7 @@ variable "gpu_type" {
 variable "gpu_count" {
   type        = number
   description = "The number of GPUs per node."
-  default     = 1
+  default     = 2
 }
 
 variable "gpu_node_machine" {
